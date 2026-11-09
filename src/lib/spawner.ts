@@ -95,12 +95,38 @@ export function engineFen(fen: string, playerColor: Color): string {
   const keep = Math.max(0, Math.min(API_MAX_PAWNS, API_MAX_NON_KING - others));
   let room = API_MAX_NON_KING - others - keep;
 
+  const myKing = pieces.find((p) => p.color === side && p.type === 'k')!.square;
+  const enemy = side === 'w' ? 'b' : 'w';
+  // A removal that opens a line to the player's own king would let the bot capture it.
+  const exposesKing = () => chess.isAttacked(myKing, enemy);
+
   for (const pawn of nearestFirst.slice(keep)) {
     chess.remove(pawn.square);
+    if (exposesKing()) {
+      chess.put({ type: 'p', color: side }, pawn.square);
+      continue;
+    }
     if (room === 0) continue;
     chess.put({ type: 'b', color: side }, pawn.square);
     if (chess.isAttacked(king, side)) chess.remove(pawn.square);
     else room -= 1;
+  }
+
+  // Still too many, as with a big herd of knights: drop the pieces furthest from the action.
+  for (;;) {
+    const left = chess.board().flat().filter((p) => p?.color === side && p.type !== 'k').map((p) => p!);
+    const leftPawns = left.filter((p) => p.type === 'p');
+    if (left.length <= API_MAX_NON_KING && leftPawns.length <= API_MAX_PAWNS) break;
+    const pool = leftPawns.length > API_MAX_PAWNS ? leftPawns : left.filter((p) => p.type !== 'p');
+    const furthestFirst = [...pool].sort((a, b) => distance(b.square) - distance(a.square));
+    const safe = furthestFirst.find((p) => {
+      chess.remove(p.square);
+      const ok = !exposesKing();
+      chess.put({ type: p.type, color: side }, p.square);
+      return ok;
+    });
+    if (!safe) break;
+    chess.remove(safe.square);
   }
 
   const parts = chess.fen().split(' ');

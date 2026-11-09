@@ -1,4 +1,4 @@
-export type SoundName = 'move' | 'capture' | 'check' | 'end' | 'shot' | 'spawn' | 'scream' | 'portal' | 'boom' | 'snap' | 'snatch' | 'dig' | 'gold';
+export type SoundName = 'move' | 'capture' | 'check' | 'end' | 'shot' | 'spawn' | 'scream' | 'portal' | 'boom' | 'snap' | 'snatch' | 'dig' | 'gold' | 'magnet' | 'foal';
 
 let context: AudioContext | null = null;
 
@@ -68,6 +68,15 @@ export function playSound(name: SoundName) {
       tone(ctx, 1320, 0, 0.18, 0.18, 'sine');
       tone(ctx, 1760, 0.07, 0.22, 0.15, 'sine');
       tone(ctx, 2640, 0.14, 0.3, 0.1, 'sine');
+    }
+    if (name === 'magnet') {
+      tone(ctx, 300, 0, 0.22, 0.22, 'sawtooth');
+      tone(ctx, 600, 0.04, 0.2, 0.12, 'sine');
+    }
+    if (name === 'foal') {
+      tone(ctx, 660, 0, 0.1, 0.18, 'triangle');
+      tone(ctx, 880, 0.09, 0.1, 0.18, 'triangle');
+      tone(ctx, 1100, 0.18, 0.16, 0.16, 'triangle');
     }
     if (name === 'end') {
       tone(ctx, 392, 0, 0.16, 0.25, 'sine');

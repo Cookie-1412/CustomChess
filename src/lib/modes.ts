@@ -1,4 +1,4 @@
-export type GameMode = 'classic' | 'sniper' | 'spawner' | 'scp' | 'scp173' | 'portal' | 'bomb' | 'boss' | 'midas';
+export type GameMode = 'classic' | 'sniper' | 'spawner' | 'scp' | 'scp173' | 'portal' | 'bomb' | 'boss' | 'midas' | 'magnet' | 'horses';
 
 export interface ModeInfo {
   id: GameMode;
@@ -14,6 +14,8 @@ export const MODES: ModeInfo[] = [
   { id: 'portal', title: 'Portals', section: 'Powerups' },
   { id: 'bomb', title: 'Queen Bomb', section: 'Powerups' },
   { id: 'midas', title: 'Midas Touch', section: 'Powerups' },
+  { id: 'magnet', title: 'Magnets', section: 'Powerups' },
+  { id: 'horses', title: 'Horse Breeding', section: 'Powerups' },
   { id: 'scp', title: 'Stockfish vs SCP-096', section: 'Challenges' },
   { id: 'scp173', title: 'Stockfish vs SCP-173', section: 'Challenges' },
   { id: 'boss', title: 'Boss Fight', section: 'Challenges' },

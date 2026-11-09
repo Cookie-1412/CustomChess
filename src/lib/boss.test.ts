@@ -174,7 +174,7 @@ describe('powerCanEscape', () => {
     expect(powerCanEscape('4k3/8/8/8/8/8/5PPP/r5K1 w - - 0 1', [], 'white', used)).toBe(true);
   });
   it('gives up when no power helps', () => {
-    const allUsed = { snatch: true, hole: true, pawn: true };
+    const allUsed = { snatch: true, hole: true, pawn: true, magnet: true };
     expect(powerCanEscape('4k3/8/8/8/8/8/5PPP/r5K1 w - - 0 1', [], 'white', allUsed)).toBe(false);
   });
   it('sees a real mate through a used-up turn', () => {

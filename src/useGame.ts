@@ -12,6 +12,8 @@ import {
   type Power, type PowersUsed,
 } from './lib/boss';
 import { afterGild, gildCanEscape, midasTargets, type GoldPiece } from './lib/midas';
+import { magnetCanEscape, magnetPlan, magnetPull, type Pull } from './lib/magnet';
+import { breed } from './lib/horses';
 import { ALL_SQUARES, fogFen, visibleSquares } from './lib/fog';
 import { isScpMode, modeInfo, type GameMode } from './lib/modes';
 import { addPortal, exitFor, portalSan, teleport, tickPortals, type Portal, type PortalColor } from './lib/portals';
@@ -90,6 +92,7 @@ const THIEF_EXIT_MS = 470;
 
 const NO_SQUARES: Square[] = [];
 const NO_GOLD: GoldPiece[] = [];
+const NO_PLAN: Record<string, Pull[]> = {};
 
 const colorOf = (turn: 'w' | 'b'): Color => (turn === 'w' ? 'white' : 'black');
 const other = (color: Color): Color => (color === 'white' ? 'black' : 'white');
@@ -127,7 +130,12 @@ function detectBossResult(chess: Chess, game: ActiveGame, holes: Square[], posit
   if (!hasBossMove(chess, holes)) {
     const playerToMove = colorOf(chess.turn()) === game.playerColor;
     const stripped = stripHoles(chess.fen(), holes);
-    const escape = game.mode === 'midas' ? gildCanEscape(stripped, holes, game.playerColor) : powerCanEscape(stripped, holes, game.playerColor, used);
+    const escape =
+      game.mode === 'midas'
+        ? gildCanEscape(stripped, holes, game.playerColor)
+        : game.mode === 'magnet'
+          ? !used.magnet && magnetCanEscape(stripped)
+          : powerCanEscape(stripped, holes, game.playerColor, used);
     if (playerToMove && escape) return null;
     return chess.inCheck() ? { winner: other(colorOf(chess.turn())), reason: 'checkmate' } : { winner: null, reason: 'stalemate' };
   }
@@ -163,6 +171,8 @@ export function useGame() {
   const [powersUsed, setPowersUsed] = useState<PowersUsed>(NO_POWERS_USED);
   // Powers change the board between moves, so the latest position isn't in `records` yet.
   const [powerFen, setPowerFen] = useState<string | null>(null);
+  const [hearts, setHearts] = useState<Square | null>(null);
+  const heartsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [thief, setThief] = useState<{ square: Square; piece: string } | null>(null);
   const [result, setResult] = useState<GameResult | null>(null);
   const [version, bumpVersion] = useReducer((v: number) => v + 1, 0);
@@ -273,7 +283,8 @@ export function useGame() {
       const scpSquare = isScpMode(active.mode) ? scpRef.current : null;
       const before = scpSquare ? stripScp(chess.fen(), scpSquare) : '';
       // Boss Fight's holes and Midas Touch's gold work the same way on the board.
-      const bossGame = active.mode === 'boss' || active.mode === 'midas';
+      // Free-action modes: powers apply between moves and are noted with the player's next move.
+      const bossGame = active.mode === 'boss' || active.mode === 'midas' || active.mode === 'magnet';
       const bossBefore = bossGame ? stripHoles(chess.fen(), holesRef.current) : '';
       const portalGame = active.mode === 'portal';
       const portalsBefore = portalsRef.current;
@@ -337,7 +348,21 @@ export function useGame() {
         after = blast.fen;
         san = blastSan(move.san, chess);
       }
-      const extras = { ...(bossGame ? { holes: holesRef.current, gold: goldRef.current } : {}), ...(blast ? { blast: true } : {}), ...(scpSquare ? { scp: scpSquare } : {}), ...(portalGame ? { portals: portalsRef.current, teleported: !!teleported, ...(exitSquare ? { exit: exitSquare } : {}) } : {}) };
+      // Two of the player's knights side by side make a foal next to their herd.
+      const breeder = move.promotion ?? move.piece;
+      const foal =
+        active.mode === 'horses' && colorOf(move.color) === active.playerColor && breeder === 'n'
+          ? breed(chess.fen(), move.to, active.playerColor)
+          : null;
+      if (foal) {
+        chess.load(foal.fen);
+        after = foal.fen;
+        san = `${san.replace(/[+#]$/, '')} 🐴${foal.square}${chess.isCheckmate() ? '#' : chess.inCheck() ? '+' : ''}`;
+        setHearts(foal.square);
+        clearTimeout(heartsTimerRef.current);
+        heartsTimerRef.current = setTimeout(() => setHearts(null), 1100);
+      }
+      const extras = { ...(foal ? { spawn: foal.square } : {}), ...(bossGame ? { holes: holesRef.current, gold: goldRef.current } : {}), ...(blast ? { blast: true } : {}), ...(scpSquare ? { scp: scpSquare } : {}), ...(portalGame ? { portals: portalsRef.current, teleported: !!teleported, ...(exitSquare ? { exit: exitSquare } : {}) } : {}) };
       setRecords((list) => [...list, { san, from: move.from, to: move.to, color: move.color, after, ...extras }]);
       if (timeControl.incrementSec > 0) clockRef.current[colorOf(move.color)] += timeControl.incrementSec * 1000;
       setSelected(null);
@@ -382,7 +407,7 @@ export function useGame() {
         finish(outcome);
         return;
       }
-      if (settingsRef.current.sound) playSound(chess.inCheck() ? 'check' : teleported ? 'portal' : move.captured || exitCapture ? 'capture' : 'move');
+      if (settingsRef.current.sound) playSound(chess.inCheck() ? 'check' : foal ? 'foal' : teleported ? 'portal' : move.captured || exitCapture ? 'capture' : 'move');
       // Both sides have now moved, so the creature takes its turn.
       if (scpSquare && move.color === 'b') {
         const victim = active.mode === 'scp173' ? pickJump(after, scpSquare) : pickVictim(after, scpSquare);
@@ -542,6 +567,8 @@ export function useGame() {
     setPowersUsed(NO_POWERS_USED);
     setPowerFen(null);
     setThief(null);
+    clearTimeout(heartsTimerRef.current);
+    setHearts(null);
     setScp(null);
     setScpBusy(false);
     setRecords([]);
@@ -802,6 +829,28 @@ export function useGame() {
     [chess, commitPower, showToast],
   );
 
+  // While the magnet is unused: each piece that would pull something, and what it would pull where.
+  const magnetPulls = useMemo(
+    (): Record<string, Pull[]> => (game?.mode === 'magnet' && canMove && !powersUsed.magnet ? magnetPlan(chess.fen()) : NO_PLAN),
+    [game, canMove, powersUsed, chess, version], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const magnetize = useCallback(
+    (square: Square, active: ActiveGame) => {
+      if (spentAlready('magnet')) return;
+      const piece = chess.get(square);
+      if (!piece || piece.type === 'p' || piece.type === 'k') return;
+      const result = magnetPull(chess.fen(), square);
+      if (!result) {
+        showToast("That piece's magnet has nothing to pull");
+        return;
+      }
+      if (settingsRef.current.sound) playSound('magnet');
+      commitPower('magnet', active, result.fen, `🧲${piece.type.toUpperCase()}${square}`);
+    },
+    [chess, commitPower, showToast, spentAlready],
+  );
+
   const placePortal = useCallback(
     (color: PortalColor, square: Square) => {
       if (!game || !canMove || chess.get(square) || portalsRef.current.some((p) => p.square === square)) return;
@@ -865,6 +914,19 @@ export function useGame() {
       }
       if (!canMove || !game || square === scp) return;
 
+      if (game.mode === 'magnet') {
+        const now = Date.now();
+        const last = lastClickRef.current;
+        lastClickRef.current = { square, time: now };
+        const piece = chess.get(square);
+        // The first click selects the piece and the second would deselect it, so a double-click pulls instead.
+        if (piece?.color === game.playerColor[0] && last.square === square && now - last.time < DOUBLE_CLICK_MS) {
+          setSelected(null);
+          magnetize(square, game);
+          return;
+        }
+      }
+
       if (game.mode === 'boss' || game.mode === 'midas') {
         if (holesRef.current.includes(square)) return;
         const now = Date.now();
@@ -916,7 +978,7 @@ export function useGame() {
       const piece = chess.get(square);
       setSelected(piece && piece.color === game.playerColor[0] && selected !== square ? square : null);
     },
-    [canMove, game, selected, tryMove, chess, shots, fire, spawnSquares, placeSpawn, scp, placePortal, snatch, dig, gild],
+    [canMove, game, selected, tryMove, chess, shots, fire, spawnSquares, placeSpawn, scp, placePortal, snatch, dig, gild, magnetize],
   );
 
   const resign = useCallback(() => {
@@ -941,7 +1003,7 @@ export function useGame() {
       scpRef.current = square;
       setScp(square);
       positionsRef.current = kept.map((r) => positionKey(r.after, r.scp!));
-    } else if (game.mode === 'boss' || game.mode === 'midas') {
+    } else if (game.mode === 'boss' || game.mode === 'midas' || game.mode === 'magnet') {
       const last = kept[kept.length - 1];
       const restored = last?.holes ?? NO_SQUARES;
       const restoredGold = last?.gold ?? NO_GOLD;
@@ -1044,7 +1106,7 @@ export function useGame() {
     settings, updateSettings,
     mode, openMode, backToMenu, shots, tracer, startFen, spawnSquares, spawnPending,
     displayedScp, seers, scpBusy, displayedPortals, rightClickSquare, popping,
-    fog, boardFen, fogSquares, moveList, blastArea, displayedHoles, powersUsed, thief, displayedGold, gildable,
+    fog, boardFen, fogSquares, moveList, blastArea, displayedHoles, powersUsed, thief, displayedGold, gildable, magnetPulls, hearts,
     game, result, history, version,
     displayedFen, displayedIndex, lastMove, isLive, canMove, playerTurn,
     inCheckSquare: isLive && chess.inCheck() ? findKing(chess) : null,

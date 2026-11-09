@@ -5,6 +5,8 @@ import { RifleBishop } from './RifleBishop';
 import { Scp096 } from './Scp096';
 import { Scp173 } from './Scp173';
 import { GoldStatue } from './GoldStatue';
+import { HorseKnight } from './HorseKnight';
+import { PullingRook } from './MagnetPiece';
 import { ThiefSprite } from './Thief';
 
 interface ScenePiece {
@@ -135,6 +137,31 @@ const SCP173 = (
   </Scene>
 );
 
+const MAGNET = (
+  <Scene
+    theme="green"
+    pieces={[
+      { piece: 'bN', col: 1, row: 1 },
+      { piece: 'bP', col: 3, row: 2 },
+    ]}
+  >
+    <span className="scene-piece scene-pull" style={{ left: 0, top: '22.4%' }}><PullingRook /></span>
+  </Scene>
+);
+
+const HORSES = (
+  <Scene
+    theme="green"
+    pieces={[{ piece: 'bP', col: 3, row: 2 }]}
+  >
+    <span className="scene-piece" style={{ left: 0, top: '22.4%' }}><HorseKnight /></span>
+    <span className="scene-piece" style={{ left: '25%', top: '22.4%' }}><HorseKnight /></span>
+    <span className="scene-piece scene-foal" style={{ left: '50%', top: '30%' }}><HorseKnight /></span>
+    <span className="scene-heart" style={{ left: '43%', top: '8%' }}>♥</span>
+    <span className="scene-heart" style={{ left: '55%', top: '2%' }}>♥</span>
+  </Scene>
+);
+
 const MIDAS = (
   <Scene
     theme="green"
@@ -161,7 +188,7 @@ const BOSS = (
   </Scene>
 );
 
-const THUMBNAILS: Record<GameMode, React.ReactNode> = { classic: CLASSIC, sniper: SNIPER, spawner: SPAWNER, portal: PORTAL, bomb: BOMB, scp: SCP, scp173: SCP173, boss: BOSS, midas: MIDAS };
+const THUMBNAILS: Record<GameMode, React.ReactNode> = { classic: CLASSIC, sniper: SNIPER, spawner: SPAWNER, portal: PORTAL, bomb: BOMB, scp: SCP, scp173: SCP173, boss: BOSS, midas: MIDAS, magnet: MAGNET, horses: HORSES };
 
 export function Menu({ onPick }: { onPick: (mode: GameMode) => void }) {
   const sections = [...new Set(MODES.map((mode) => mode.section))];

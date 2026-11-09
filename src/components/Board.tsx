@@ -4,7 +4,8 @@ import type { Move, Square } from 'chess.js';
 import type { BombLevel } from '../lib/bomb';
 import type { Portal } from '../lib/portals';
 import type { Shot } from '../lib/sniper';
-import { BOMB_PIECES, RIFLE_PIECES } from './riflePieces';
+import type { Pull } from '../lib/magnet';
+import { BOMB_PIECES, HORSE_PIECES, MAGNET_PIECES, RIFLE_PIECES } from './riflePieces';
 import { Scp096 } from './Scp096';
 import { GoldStatue } from './GoldStatue';
 import { Thief } from './Thief';
@@ -35,6 +36,11 @@ function portalStyle({ color, ttl }: Portal): CSSProperties {
 const FOG: CSSProperties = { backgroundColor: '#3f3d3a', backgroundImage: 'none', boxShadow: 'inset 0 0 0 1px rgba(0, 0, 0, 0.18)' };
 
 const HOLE: CSSProperties = { backgroundColor: '#08080b', backgroundImage: 'none', boxShadow: 'inset 0 0 12px 6px #000, inset 0 0 0 2px #2a2a33' };
+
+/** One of the player's pieces that would pull something: double-click it. */
+const MAGNET_READY: CSSProperties = { boxShadow: 'inset 0 0 0 4px rgba(225, 45, 45, 0.95), inset 0 0 16px 4px rgba(225, 45, 45, 0.45)' };
+/** An enemy piece some magnet would pull. */
+const MAGNET_TARGET: CSSProperties = { boxShadow: 'inset 0 0 0 4px rgba(70, 135, 255, 0.95), inset 0 0 16px 4px rgba(70, 135, 255, 0.45)' };
 
 const GILDABLE: CSSProperties = { boxShadow: 'inset 0 0 0 3px rgba(240, 190, 40, 0.95), inset 0 0 14px 3px rgba(255, 210, 60, 0.55)' };
 
@@ -85,10 +91,14 @@ interface BoardProps {
   holes: string[];
   gold: { square: string; piece: string }[];
   gildable: string[];
+  magnetPulls: Record<string, Pull[]>;
+  magnetColor: 'w' | 'b' | null;
   thief: { square: string; piece: string } | null;
   bombColor: 'w' | 'b' | null;
   bombLevel: BombLevel;
   blastArea: string[];
+  hearts: string | null;
+  horseColor: 'w' | 'b' | null;
   /** True while a teleporting piece pops out, so it appears instead of sliding. */
   instant: boolean;
   onSquareRightClick: (square: Square) => void;
@@ -99,7 +109,9 @@ interface BoardProps {
 }
 
 function BoardInner(props: BoardProps) {
-  const { fen, orientation, playerColor, canMove, lastMove, selected, legalTargets, checkSquare, hint, promotion, shots, tracer, spawnSquares, showSpawnDots, rifleColor, scpSquare, peanut, seers, portalMode, portals, instant, fogSquares, bombColor, bombLevel, blastArea, holes, thief, gold, gildable } = props;
+  const { fen, orientation, playerColor, canMove, lastMove, selected, legalTargets, checkSquare, hint, promotion, shots, tracer, spawnSquares, showSpawnDots, rifleColor, scpSquare, peanut, seers, portalMode, portals, instant, fogSquares, bombColor, bombLevel, blastArea, holes, thief, gold, gildable, magnetPulls, magnetColor, hearts, horseColor } = props;
+  const magnetSourceSquares = useMemo(() => Object.keys(magnetPulls), [magnetPulls]);
+  const magnetTargets = useMemo(() => [...new Set(Object.values(magnetPulls).flat().map((pull) => pull.from))], [magnetPulls]);
   const [hovered, setHovered] = useState<string | null>(null);
 
   const squareStyles = useMemo(() => {
@@ -126,15 +138,21 @@ function BoardInner(props: BoardProps) {
     }
     for (const portal of portals) styles[portal.square] = { ...styles[portal.square], ...portalStyle(portal) };
     for (const square of gildable) styles[square] = { ...styles[square], ...GILDABLE };
+    for (const square of magnetTargets) styles[square] = { ...styles[square], ...MAGNET_TARGET };
+    for (const square of magnetSourceSquares) styles[square] = { ...styles[square], ...MAGNET_READY };
     for (const square of holes) styles[square] = HOLE;
     for (const square of fogSquares) styles[square] = FOG;
     return styles;
-  }, [lastMove, checkSquare, selected, legalTargets, shots, spawnSquares, showSpawnDots, hovered, playerColor, seers, portals, fogSquares, peanut, holes, gildable]);
+  }, [lastMove, checkSquare, selected, legalTargets, shots, spawnSquares, showSpawnDots, hovered, playerColor, seers, portals, fogSquares, peanut, holes, gildable, magnetTargets, magnetSourceSquares]);
 
-  const arrows = useMemo(
-    () => (hint ? [{ startSquare: hint.from, endSquare: hint.to, color: 'rgba(120, 190, 60, 0.9)' }] : []),
-    [hint],
-  );
+  // Hovering a magnet shows where each piece it would pull ends up.
+  const arrows = useMemo(() => {
+    const list = hint ? [{ startSquare: hint.from, endSquare: hint.to, color: 'rgba(120, 190, 60, 0.9)' }] : [];
+    for (const pull of (hovered && magnetPulls[hovered]) || []) {
+      list.push({ startSquare: pull.from, endSquare: pull.to, color: 'rgba(70, 135, 255, 0.85)' });
+    }
+    return list;
+  }, [hint, hovered, magnetPulls]);
 
   return (
     <div className="board-frame" onContextMenu={portalMode ? (event) => event.preventDefault() : undefined}>
@@ -144,6 +162,8 @@ function BoardInner(props: BoardProps) {
           allowDrawingArrows: !portalMode,
           ...(rifleColor ? { pieces: RIFLE_PIECES[rifleColor] } : {}),
           ...(bombColor ? { pieces: BOMB_PIECES[bombLevel][bombColor] } : {}),
+          ...(magnetColor ? { pieces: MAGNET_PIECES[magnetColor] } : {}),
+          ...(horseColor ? { pieces: HORSE_PIECES[horseColor] } : {}),
           position: fen,
           boardOrientation: orientation,
           squareStyles,
@@ -170,6 +190,18 @@ function BoardInner(props: BoardProps) {
         }}
       />
       {scpSquare && <ScpOverlay square={scpSquare} orientation={orientation} peanut={peanut} enraged={peanut ? seers.length === 0 : seers.length > 0} />}
+      {magnetSourceSquares.map((square) => {
+        const { x, y } = squareCentre(square, orientation);
+        return <div key={square} className="magnet-tag" data-tag={square} style={{ left: `${x - 6.25}%`, top: `${y - 6.25}%` }}><span>2×</span></div>;
+      })}
+      {hearts && (() => {
+        const { x, y } = squareCentre(hearts, orientation);
+        return (
+          <div className="hearts" data-hearts={hearts} style={{ left: `${x - 6.25}%`, top: `${y - 6.25}%` }}>
+            <i>♥</i><i>♥</i><i>♥</i>
+          </div>
+        );
+      })()}
       {blastArea.map((square) => {
         const { x, y } = squareCentre(square, orientation);
         return <div key={square} className="blast-cell" data-blast={square} style={{ left: `${x - 6.25}%`, top: `${y - 6.25}%` }} />;

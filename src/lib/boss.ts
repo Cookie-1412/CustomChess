@@ -3,10 +3,10 @@ import { restoreEnPassant } from './fen';
 
 type Color = 'white' | 'black';
 
-export type Power = 'snatch' | 'hole' | 'pawn';
+export type Power = 'snatch' | 'hole' | 'pawn' | 'magnet';
 export type PowersUsed = Record<Power, boolean>;
 
-export const NO_POWERS_USED: PowersUsed = { snatch: false, hole: false, pawn: false };
+export const NO_POWERS_USED: PowersUsed = { snatch: false, hole: false, pawn: false, magnet: false };
 
 /**
  * Holes block both sides and can't be landed on, which chess has no piece for.

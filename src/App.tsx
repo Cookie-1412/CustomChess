@@ -138,6 +138,8 @@ export default function App() {
             holes={g.mode === 'midas' ? NO_SEERS : g.displayedHoles}
             gold={g.displayedGold}
             gildable={g.gildable}
+            magnetPulls={g.magnetPulls}
+            magnetColor={g.mode === 'magnet' ? pieceSide : null}
             thief={g.thief}
             portals={g.displayedPortals}
             instant={g.popping}
@@ -145,6 +147,8 @@ export default function App() {
             bombColor={g.mode === 'bomb' ? pieceSide : null}
             bombLevel={game?.bombLevel ?? settings.bombLevel}
             blastArea={g.blastArea}
+            hearts={g.hearts}
+            horseColor={g.mode === 'horses' ? pieceSide : null}
             onSquareRightClick={g.rightClickSquare}
             seers={g.isLive ? g.seers : NO_SEERS}
             onSelect={g.setSelected}
@@ -180,6 +184,24 @@ export default function App() {
                   {g.displayedPortals.map((p) => (
                     <span key={p.square} className={`portal-chip ${p.color}`}>{p.color} {p.square}{p.ttl !== null && ` (closes in ${p.ttl})`}</span>
                   ))}
+                </p>
+              )}
+            </div>
+          )}
+          {g.mode === 'horses' && (
+            <p className="rules horse-rules">
+              Move one of your knights next to another of your knights (any of the 8 surrounding squares) and a new knight appears on a random empty square beside that herd. One foal per move.
+            </p>
+          )}
+          {g.mode === 'magnet' && (
+            <div className="rules magnet-rules">
+              <p>Double-click one of your knights, bishops, rooks or queens to pull every enemy piece it attacks right beside it. Knights pull to their diagonal square, if it's empty. It's free, once per turn.</p>
+              {game && <p className="magnet-status" data-used={g.powersUsed.magnet}>{g.powersUsed.magnet ? 'Magnet used. It recharges when you move.' : 'Magnet ready.'}</p>}
+              {game && !g.powersUsed.magnet && (
+                <p className="magnet-legend">
+                  <span className="swatch source" /> 2× your piece to double-click
+                  <span className="swatch target" /> enemy it would pull
+                  <br />Hover a red piece to see where each pull lands.
                 </p>
               )}
             </div>

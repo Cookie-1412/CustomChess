@@ -42,6 +42,30 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--green); out
 .board-column { width: var(--board); }
 .board-frame { position: relative; width: 100%; aspect-ratio: 1; border-radius: 4px; overflow: hidden; touch-action: manipulation; }
 
+/* Horse Breeding */
+.hearts { position: absolute; z-index: 13; width: 12.5%; height: 12.5%; pointer-events: none; }
+.hearts i { position: absolute; bottom: 30%; font-style: normal; font-size: clamp(14px, 2.4vw, 26px); color: #ff4f8b; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); opacity: 0; animation: heart-rise 1.05s ease-out forwards; }
+.hearts i:nth-child(1) { left: 12%; }
+.hearts i:nth-child(2) { left: 42%; animation-delay: 0.12s; }
+.hearts i:nth-child(3) { left: 70%; animation-delay: 0.24s; }
+@keyframes heart-rise { 0% { opacity: 0; transform: translateY(20%) scale(0.6); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-160%) scale(1.1); } }
+.horse-rules { background: rgba(255, 79, 139, 0.13); border-left-color: #ff4f8b; }
+.scene-foal { width: 17% !important; }
+.scene-heart { position: absolute; font-size: 30px; color: #ff4f8b; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+
+/* Magnets */
+.magnet-rules { background: rgba(80, 140, 255, 0.13); border-left-color: #dc3232; }
+.magnet-rules p { margin: 0; }
+.magnet-status { margin-top: 6px !important; font-weight: 700; }
+.magnet-status[data-used='true'] { color: var(--muted); }
+.magnet-legend { margin-top: 6px !important; font-size: 12px; color: var(--muted); line-height: 1.7; }
+.magnet-legend .swatch { display: inline-block; width: 11px; height: 11px; margin: 0 4px -1px 0; border-radius: 2px; }
+.magnet-legend .swatch.source { border: 3px solid #e12d2d; }
+.magnet-legend .swatch.target { border: 3px solid #4687ff; margin-left: 10px; }
+.magnet-tag { position: absolute; z-index: 12; width: 12.5%; height: 12.5%; pointer-events: none; }
+.magnet-tag span { position: absolute; left: 4%; top: 4%; padding: 0 4px; border-radius: 4px; font: 700 clamp(9px, 1.3vw, 13px) / 1.35 'Segoe UI', sans-serif; color: #fff; background: #d12a2a; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); }
+.scene-pull { z-index: 1; }
+
 /* Midas Touch */
 .gold-cell { position: absolute; z-index: 11; width: 12.5%; height: 12.5%; pointer-events: none; background: radial-gradient(circle, rgba(255, 215, 90, 0.35), rgba(160, 110, 10, 0.25)); }
 .gold-statue { width: 100%; height: 100%; }
@@ -303,6 +327,7 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border: 0; bo
   .thinking i { animation: none; opacity: 1; }
   .scp { transition: none; }
   .blast-cell { animation-duration: 0.01s; animation-delay: 0.6s; }
+  .hearts i { animation: none; }
   .scp.enraged { animation: none; }
   .eval-white { transition: none; }
 }

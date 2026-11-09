@@ -1,6 +1,6 @@
 # Play Stockfish
 
-A browser chess app for playing Stockfish across nine game modes, with an Elo slider you can change mid-game.
+A browser chess app for playing Stockfish across eleven game modes, with an Elo slider you can change mid-game.
 
 ## Run it
 
@@ -76,6 +76,20 @@ Rules in `src/lib/spawner.ts`:
 - Gold blockers stay for the rest of the game. Nothing can land on one or pass through it, except that knights jump over as usual, and they attack nothing.
 - Pieces you can gild glow gold.
 - You only lose to checkmate if no gild could get you out, such as gilding the piece giving check.
+
+**Magnets:** a normal game, but your knights, bishops, rooks and queens carry magnets. Double-click one to pull every enemy piece it attacks right beside it. It's free and doesn't use your turn, once per turn, recharging when you move. Your knights, bishops, rooks and queens carry a little magnet. While it's charged, pieces you can double-click are outlined red with a **2×** tag, enemies they would pull are outlined blue, and hovering a red piece draws arrows to where each pull lands. Rules in `src/lib/magnet.ts`:
+
+- Bishops, rooks and queens pull along their lines to the square next to them, so a fork pulls both pieces.
+- Knights pull to their diagonal square on the target's side, and only if it's empty. If two targets share that square, one is chosen at random and the other stays.
+- Kings are never pulled. A pull is skipped if it would put your own king in check, or leave the enemy king open to capture on your turn.
+- You only lose to checkmate if an unused magnet couldn't get you out.
+
+**Horse Breeding:** a normal game, but when you move a knight next to another of your knights, in any of the 8 surrounding squares, a new knight appears on a random empty square beside that herd. A herd is every knight of yours connected through neighbouring squares. Rules in `src/lib/horses.ts`:
+
+- It happens as part of your move, one foal per move, and the move list marks it, like `Nf3 🐴g4`.
+- Only your knights breed, including a pawn that promotes to a knight next to one. Captures count too.
+- A foal can give check or checkmate, but it never appears where it would make a third check at once, which Stockfish can't handle.
+- The API refuses more than 16 pieces a side, so past that, Stockfish gets a copy with your furthest extras removed. Its reply is still checked against the real board.
 
 ### Challenges
 
